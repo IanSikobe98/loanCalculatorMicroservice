@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
 import java.util.HashMap;
 
 import static com.walter.loanCalculator.Utils.LoanCalculatorConstants.*;
@@ -18,6 +20,9 @@ public class TaskProcessorImpl  implements  TaskProcessor{
 
     @Autowired
     Environment environment;
+
+    private static DecimalFormat df = new DecimalFormat("0.00");;
+
     @Override
     public ApiResponse calculateLoan(HashMap<String,String> requestMap){
         ApiResponse apiResponse = new ApiResponse();
@@ -44,7 +49,7 @@ public class TaskProcessorImpl  implements  TaskProcessor{
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put("paymentNumber",String.valueOf(i+1));
                 jsonObject.put("periodInstallment",String.valueOf(periodInstallments));
-                interestPayment = calculateInterestPayment(loanAmount,mathParams);
+                interestPayment = calculateInterestPayment(remainingBalance,mathParams);
                 jsonObject.put("interestPayment",String.valueOf(interestPayment));
                 mathParams = calculatePrincipalPaymentAndRemainingBalance(interestRateType,periodInstallments,interestPayment,remainingBalance,mathParams);
                 jsonObject.put("principalPayment",mathParams.get("principalPayment"));
@@ -74,36 +79,36 @@ public class TaskProcessorImpl  implements  TaskProcessor{
         long noOfPayments = 0;
         switch (paymentFrequency){
             case ANNUALLY:
-                periodInterest= interestRate/1;
+                periodInterest= (interestRate/1)/100;
                 noOfPayments =Math.round(loanTerm * 1);
                 mathParams.put("paymentFrequency",String.valueOf(1));
                 break;
             case SEMI_ANNUALY:
-                periodInterest= interestRate/2;
+                periodInterest= (interestRate/2)/100;
                 noOfPayments =Math.round(loanTerm * 2);
                 mathParams.put("paymentFrequency",String.valueOf(2));
                 break;
 
             case QUARTERLY:
-                periodInterest= interestRate/4;
+                periodInterest= (interestRate/4)/100;
                 noOfPayments =Math.round(loanTerm * 4);
                 mathParams.put("paymentFrequency",String.valueOf(4));
                 break;
 
             case MONTHLY:
-                periodInterest= interestRate/12;
+                periodInterest= (interestRate/12)/100;
                 noOfPayments =Math.round(loanTerm * 12);
                 mathParams.put("paymentFrequency",String.valueOf(12));
                 break;
 
             case BIWEEKLY:
-                periodInterest= interestRate/26;
+                periodInterest= (interestRate/26)/100;
                 noOfPayments =Math.round(loanTerm * 26);
                 mathParams.put("paymentFrequency",String.valueOf(26));
                 break;
 
             case WEEKLY:
-                periodInterest= interestRate/52;
+                periodInterest= (interestRate/52)/100;
                 noOfPayments =Math.round(loanTerm * 52);
                 mathParams.put("paymentFrequency",String.valueOf(52));
                 break;
@@ -121,7 +126,7 @@ public class TaskProcessorImpl  implements  TaskProcessor{
         Double periodInterest = Double.valueOf(mathParams.getOrDefault("periodInterest","0"));
         Double noOfPayments = Double.valueOf(mathParams.getOrDefault("noOfPayments","0"));
         Double paymentFrequency = Double.valueOf(mathParams.getOrDefault("paymentFrequency","0"));
-
+        interestRate = interestRate/100;
         switch (interestRateType){
             case REDUCING_BALANCE:
                 //formula : [P × r(1 + r)^n] / [(1 + r)^n – 1]
@@ -131,7 +136,7 @@ public class TaskProcessorImpl  implements  TaskProcessor{
                 Double numeratorCalc = 1+periodInterest;
                 numeratorCalc = Math.pow(numeratorCalc,noOfPayments);
                 numeratorCalc = periodInterest* numeratorCalc;
-                installments = numeratorCalc * loanAmount;
+                numeratorCalc = numeratorCalc * loanAmount;
                 installments = numeratorCalc/installments;
 
                 break;
@@ -141,6 +146,7 @@ public class TaskProcessorImpl  implements  TaskProcessor{
                 Double totalInterest = loanAmount*interestRate*(noOfPayments/paymentFrequency);
                 installments = (loanAmount+totalInterest) / noOfPayments;
         }
+        installments = Double.valueOf(df.format(installments));
         return installments;
     }
 
@@ -149,6 +155,7 @@ public class TaskProcessorImpl  implements  TaskProcessor{
         Double interestPayment = 0.0;
         Double periodInterest = Double.valueOf(mathParams.getOrDefault("periodInterest","0"));
         interestPayment = remainingBal * periodInterest;
+        interestPayment = Double.valueOf(df.format(interestPayment));
         return  interestPayment;
     }
 
@@ -161,8 +168,8 @@ public class TaskProcessorImpl  implements  TaskProcessor{
                 }
 
                 remainingBalance = remainingBalance -principalPayment;
-                mathParams.put("principalPayment", String.valueOf(principalPayment));
-                mathParams.put("remainingBalance", String.valueOf(remainingBalance));
+                mathParams.put("principalPayment", df.format(principalPayment));
+                mathParams.put("remainingBalance", df.format(remainingBalance));
                 return mathParams;
     }
 }
