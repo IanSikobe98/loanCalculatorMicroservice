@@ -45,6 +45,13 @@ public class TaskProcessorImpl  implements  TaskProcessor{
             JSONArray jsonArray = new JSONArray();
             Double remainingBalance = loanAmount;
             Double interestPayment = 0.0;
+            String legalFees= environment.getProperty("loan.legal.fee","0");
+            Double processingFeePercentage =Double.valueOf(environment.getProperty("loan.processing.percentage","0"));
+            Double exciseDutyPercentage =Double.valueOf(environment.getProperty("loan.excise.duty.percentage","0"));
+
+            String processingFee = df.format(processingFeePercentage/100*loanAmount);
+            String exciseDuty = df.format(exciseDutyPercentage/100*loanAmount);
+
             for(int i=0 ; i<noOfPayments;i++){
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put("paymentNumber",String.valueOf(i+1));
@@ -55,12 +62,25 @@ public class TaskProcessorImpl  implements  TaskProcessor{
                 jsonObject.put("principalPayment",mathParams.get("principalPayment"));
                 jsonObject.put("remainingBalance",mathParams.get("remainingBalance"));
                 remainingBalance = Double.valueOf(mathParams.get("remainingBalance"));
+
+                if(i==0){
+                    jsonObject.put("legalFees",legalFees);
+                    jsonObject.put("processingFees",processingFee);
+                    jsonObject.put("exciseDuty",exciseDuty);
+
+                }
+                else{
+
+                    jsonObject.put("legalFees","0");
+                    jsonObject.put("processingFees","0");
+                    jsonObject.put("exciseDuty","0");
+                }
                 jsonArray.put(jsonObject);
 
             }
             apiResponse.setResponseCode("00");
             apiResponse.setResponseBody(String.valueOf(jsonArray));
-            apiResponse.setMessage("TEst");
+            apiResponse.setMessage("Successful loan application");
             log.info("Successful loan application");
 
         }
